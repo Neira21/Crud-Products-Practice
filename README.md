@@ -102,3 +102,9 @@ export class PrismaService extends PrismaClient implements OnModuleInit {
   }
 }
 ```
+
+## usar multer en nestJS
+
+```bash
+npm install @nestjs/platform-express multer
+```
