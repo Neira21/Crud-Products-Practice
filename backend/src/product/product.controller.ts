@@ -15,6 +15,8 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ProductService } from './product.service';
 import { CreateProductDto, UpdateProductDto } from './dto';
+import { diskStorage } from 'multer';
+import { extname } from 'path';
 
 @Controller('/products')
 export class ProductController {
@@ -22,20 +24,35 @@ export class ProductController {
 
   @Get('/hello')
   getHello(): string {
+    console.log('GET /products/hello called');
     return this.productService.getHello();
   }
 
   @Post()
   @UseInterceptors(
-    FileInterceptor('image', {
-      dest: './uploads/products',
+    FileInterceptor('imageUrl', {
+      storage: diskStorage({
+        destination: './uploads/products',
+        filename: (req, file, cb) => {
+          const timestamp = Date.now();
+          const random = Math.round(Math.random() * 1e9);
+          const extension = extname(file.originalname) || '.bin';
+          const filename = `product-${timestamp}-${random}${extension}`;
+          cb(null, filename);
+        },
+      }),
       fileFilter: (req, file, cb) => {
-        if (file.mimetype.match(/\/(jpg|jpeg|png|gif)$/)) {
+        if (!file) {
+          cb(null, true);
+          return;
+        }
+        // Permitir imágenes y audio
+        if (file.mimetype.match(/\/(jpg|jpeg|png|gif|mp3|wav|ogg|m4a)$/)) {
           cb(null, true);
         } else {
           cb(
             new BadRequestException(
-              'Solo se permiten archivos de imagen (jpg, jpeg, png, gif)',
+              'Solo se permiten archivos de imagen (jpg, jpeg, png, gif) o audio (mp3, wav, ogg, m4a)',
             ),
             false,
           );
@@ -50,15 +67,16 @@ export class ProductController {
     @Body() createProductDto: CreateProductDto,
     @UploadedFile() file?: Express.Multer.File,
   ) {
+    console.log('Raw body:', createProductDto);
+    console.log('File received:', file);
+
+    // Priorizar archivo subido sobre imageUrl del body
     if (file) {
-      // Generar nombre único para el archivo
-      const timestamp = Date.now();
-      const random = Math.round(Math.random() * 1e9);
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const extension = file.originalname.split('.').pop() || 'jpg';
-      const filename = `product-${timestamp}-${random}.${extension}`;
-      createProductDto.imageUrl = `/uploads/products/${filename}`;
+      // Usar el filename que multer ya generó
+      createProductDto.imageUrl = `/uploads/products/${file.filename}`;
     }
+    // Si no hay archivo pero viene imageUrl en el body, se mantiene
+
     return this.productService.create(createProductDto);
   }
 
@@ -73,10 +91,53 @@ export class ProductController {
   }
 
   @Patch(':id')
+  @UseInterceptors(
+    FileInterceptor('imageUrl', {
+      storage: diskStorage({
+        destination: './uploads/products',
+        filename: (req, file, cb) => {
+          const timestamp = Date.now();
+          const random = Math.round(Math.random() * 1e9);
+          const extension = extname(file.originalname) || '.bin';
+          const filename = `product-${timestamp}-${random}${extension}`;
+          cb(null, filename);
+        },
+      }),
+      fileFilter: (req, file, cb) => {
+        if (!file) {
+          cb(null, true);
+          return;
+        }
+        // Permitir imágenes y audio
+        if (file.mimetype.match(/\/(jpg|jpeg|png|gif|mp3|wav|ogg|m4a)$/)) {
+          cb(null, true);
+        } else {
+          cb(
+            new BadRequestException(
+              'Solo se permiten archivos de imagen (jpg, jpeg, png, gif) o audio (mp3, wav, ogg, m4a)',
+            ),
+            false,
+          );
+        }
+      },
+      limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB
+      },
+    }),
+  )
   update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateProductDto: UpdateProductDto,
+    @UploadedFile() file?: Express.Multer.File,
   ) {
+    console.log('PATCH - Body:', updateProductDto);
+    console.log('PATCH - File:', file);
+
+    // Si hay archivo nuevo, agregar la nueva URL
+    if (file) {
+      updateProductDto.imageUrl = `/uploads/products/${file.filename}`;
+    }
+
     return this.productService.patchUpdate(id, updateProductDto);
   }
 
@@ -91,5 +152,14 @@ export class ProductController {
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {
     return this.productService.remove(id);
+  }
+
+  @Delete('range/:from/:to')
+  removeRange(
+    @Param('from', ParseIntPipe) from: number,
+    @Param('to', ParseIntPipe) to: number,
+  ) {
+    console.log(`Eliminando productos del ID ${from} al ${to}`);
+    return this.productService.removeRange(from, to);
   }
 }

@@ -5,6 +5,7 @@ import {
   IsPositive,
   IsOptional,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class CreateProductDto {
   @IsString({ message: 'El nombre debe ser un texto válido' })
@@ -15,7 +16,14 @@ export class CreateProductDto {
   @IsOptional()
   description?: string;
 
-  @IsNumber({}, { message: 'El precio debe ser un número válido' })
+  @Transform(({ value }) => {
+    if (typeof value === 'string') {
+      const num = parseFloat(value);
+      return isNaN(num) ? value : num;
+    }
+    return value;
+  })
+  @IsNumber({}, { message: 'El precio debe ser un número válido, no un texto' })
   @IsPositive({ message: 'El precio debe ser mayor a 0' })
   @IsOptional()
   price?: number;
