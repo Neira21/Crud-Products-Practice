@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma.service';
 import { CreateProductDto, UpdateProductDto } from './dto';
 
@@ -10,33 +10,62 @@ export class ProductService {
     return 'Hello World! from NestJS Products Service';
   }
 
-  create(createProductDto: CreateProductDto): Promise<any> {
+  async create(createProductDto: CreateProductDto) {
     const data = {
-      ...createProductDto,
-      price: Number(createProductDto.price),
+      name: createProductDto.name,
+      description: createProductDto.description || '',
+      price: createProductDto.price ? Number(createProductDto.price) : 0,
+      imageUrl: createProductDto.imageUrl || null,
     };
-    return this.prisma.product.create({ data });
+    return await this.prisma.product.create({ data });
   }
 
-  findAll() {
-    return this.prisma.product.findMany();
+  async findAll() {
+    return await this.prisma.product.findMany();
   }
 
-  findOne(id: number) {
-    return this.prisma.product.findUnique({ where: { id } });
+  async findOne(id: number) {
+    const product = await this.prisma.product.findUnique({ where: { id } });
+
+    if (!product) {
+      throw new NotFoundException(`Producto con ID ${id} no encontrado`);
+    }
+
+    return product;
   }
 
-  update(id: number, updateProductDto: UpdateProductDto) {
+  async patchUpdate(id: number, updateProductDto: UpdateProductDto) {
+    if (updateProductDto.description === undefined) {
+      updateProductDto.description = '';
+    }
+
+    const data = { ...updateProductDto };
+
     return this.prisma.product.update({
       where: { id },
-      data: {
-        ...updateProductDto,
-        price: Number(updateProductDto.price),
-      },
+      data,
     });
   }
 
-  remove(id: number) {
-    return this.prisma.product.delete({ where: { id } });
+  async putUpdate(id: number, updateProductDto: UpdateProductDto) {
+    if (updateProductDto.description === undefined) {
+      updateProductDto.description = '';
+    }
+    if (updateProductDto.price === undefined) {
+      updateProductDto.price = 0;
+    }
+    const data = { ...updateProductDto, price: Number(updateProductDto.price) };
+    return this.prisma.product.update({
+      where: { id },
+      data,
+    });
+  }
+
+  async remove(id: number) {
+    try {
+      return await this.prisma.product.delete({ where: { id } });
+    } catch {
+      throw new NotFoundException('No se puede eliminar el producto');
+    }
   }
 }
