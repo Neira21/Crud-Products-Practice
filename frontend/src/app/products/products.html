@@ -1,0 +1,28 @@
+<div class="products-container">
+  <h1>Lista de Productos</h1>
+
+  @if (loading()) {
+  <p>Cargando productos...</p>
+  } @else if (error()) {
+  <div class="error">
+    <p>{{ error() }}</p>
+    <button (click)="loadProducts()">Reintentar</button>
+  </div>
+  } @else { @for (product of products(); track product.id) {
+  <div class="product-card">
+    <h2>{{ product.name }}</h2>
+    <p>{{ product.description }}</p>
+    <p>Precio: ${{ product.price }}</p>
+    @if (product.imageUrl) {
+    <img
+      [src]="getImageUrl(product.imageUrl)"
+      [alt]="product.name"
+      width="200"
+      height="150"
+    />
+    }
+  </div>
+  } @empty {
+  <p>No hay productos disponibles.</p>
+  } }
+</div>
