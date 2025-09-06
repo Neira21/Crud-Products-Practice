@@ -35,6 +35,19 @@ npm install tailwindcss @tailwindcss/postcss postcss --force
 @import "tailwindcss";
 ```
 
+## app.config.ts
+
+```typescript
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideBrowserGlobalErrorListeners(),
+    provideZonelessChangeDetection(),
+    provideRouter(routes, withComponentInputBinding()),
+    provideHttpClient(withFetch()),
+  ],
+};
+```
+
 # Comandos nest
 
 - crear un proyecto nest en la carpeta vacia, o poner un nombre en vez de . para crear una carpeta con ese nombre
