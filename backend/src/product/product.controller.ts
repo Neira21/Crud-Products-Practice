@@ -142,10 +142,51 @@ export class ProductController {
   }
 
   @Put(':id')
+  @UseInterceptors(
+    FileInterceptor('imageUrl', {
+      storage: diskStorage({
+        destination: './uploads/products',
+        filename: (req, file, cb) => {
+          const timestamp = Date.now();
+          const random = Math.round(Math.random() * 1e9);
+          const extension = extname(file.originalname) || '.bin';
+          const filename = `product-${timestamp}-${random}${extension}`;
+          cb(null, filename);
+        },
+      }),
+      fileFilter: (req, file, cb) => {
+        if (!file) {
+          cb(null, true);
+          return;
+        }
+        // Permitir imágenes y audio
+        if (file.mimetype.match(/\/(jpg|jpeg|png|gif|mp3|wav|ogg|m4a)$/)) {
+          cb(null, true);
+        } else {
+          cb(
+            new BadRequestException(
+              'Solo se permiten archivos de imagen (jpg, jpeg, png, gif) o audio (mp3, wav, ogg, m4a)',
+            ),
+            false,
+          );
+        }
+      },
+      limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB
+      },
+    }),
+  )
   Update(
     @Param('id', ParseIntPipe) id: number,
     @Body() updateProductDto: UpdateProductDto,
+    @UploadedFile() file?: Express.Multer.File,
   ) {
+    // Si hay archivo nuevo, agregar la nueva URL
+    if (file) {
+      updateProductDto.imageUrl = `/uploads/products/${file.filename}`;
+    }
+
+    console.log('desde controller, updateProductDto:', updateProductDto);
     return this.productService.putUpdate(id, updateProductDto);
   }
 

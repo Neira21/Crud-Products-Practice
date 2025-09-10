@@ -85,6 +85,7 @@ export class ProductService {
   }
 
   async putUpdate(id: number, updateProductDto: UpdateProductDto) {
+    console.log('PUT - UpdateProductDto:, service', updateProductDto);
     if (updateProductDto.description === undefined) {
       updateProductDto.description = '';
     }
